@@ -1,4 +1,4 @@
-# RiegoAutomaticoESP8266
+# RiegoAutomaticoHW-622
 
 Este proyecto consta de una placa de desarrollo llamada HW-622 la cual tiene un esp8266 integrado o tambien llamado esp12f
 
