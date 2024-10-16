@@ -1,0 +1,11 @@
+#Sensor FC28
+
+Yo voy a utilizar 2 sensores, ya que al afan de tener un riego automatico, evidentemente hay que medir como esta la humedad del sustrato o 
+tierra que se este usando para el crecimiento optimo de la planta, yo voy a usar el FC28 para medir este parametro, y que el riego vaya acorde
+a la medicion de este sensor
+
+
+
+##Fotocelula
+
+Tambien voy a utilizar una fotocelula completa con un relee integrado que pueda tener como salida una fuente de luz de tension nominal de 220v
