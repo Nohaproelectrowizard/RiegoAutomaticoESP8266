@@ -1,1 +1,1 @@
-
+Basicamente lo que hace este codigo es crear una webserver con el pin 80 interno del esp que le permite conectarse a una red wifi, via una ip variable que te permite inicializar el servidor web y leer parametros o cambiar el estado del relee desde el mismo servidor.
