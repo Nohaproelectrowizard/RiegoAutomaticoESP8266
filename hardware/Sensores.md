@@ -14,4 +14,6 @@ a la medicion de este sensor
 Tambien voy a utilizar una plaqueta de una fotocelula con relee que pueda tener como salida una fuente de luz de tension nominal de 220v
 
 ![image](https://github.com/user-attachments/assets/0f2056be-aa21-43f6-a625-59dc216d14d3)
+![image](https://github.com/user-attachments/assets/6e5d0d94-e86f-4872-82d6-81d71409820d)
+
 
