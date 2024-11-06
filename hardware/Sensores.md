@@ -8,6 +8,7 @@ tierra que se este usando para el crecimiento optimo de la planta, yo voy a usar
 ## DHT11
 
 Sensor de Temperatura y Humedad relativa del ambiente
+
 ![image](https://github.com/user-attachments/assets/ab601a71-06eb-4c3c-9255-8e21df1624ff)
 
 
