@@ -7,27 +7,41 @@
 #include "nvs_flash.h"
 #include "esp_log.h"
 #include "http_server.h"
+#include "driver/gpio.h"
+#include "dht.h"  // Librería para el sensor DHT11
 
 static const char *TAG = "ESP_SERVER";
 
 const char *ssid = "WifiNoha";
 const char *password = "noha12345";
 
-#define RELAY_PIN GPIO_NUM_2   // D1
-#define SENSOR_PIN GPIO_NUM_4   // D2
+#define RELAY_PIN1 GPIO_NUM_2   // Relé 1 en el pin D2
+#define RELAY_PIN2 GPIO_NUM_0   // Relé 2 en el pin D3 (cambia si es necesario)
+#define SENSOR_PIN_DHT GPIO_NUM_4  // Pin para el sensor DHT11
+#define SENSOR_PIN_FC28 GPIO_NUM_5 // Pin para el sensor FC-28
+
+// Definir el tipo de sensor y el pin
+#define DHT_TYPE DHT_TYPE_AM2302  // DHT11
+#define DHT_PIN SENSOR_PIN_DHT    // Pin de lectura DHT11
 
 void wifi_init(void);
 void http_server_init(void);
-void relay_control(int state);
-int read_humidity_sensor(void);
+void relay_control(int relay_num, int state);
+float read_temperature(void);
+float read_humidity(void);
+int read_soil_humidity(void);
 
 void app_main(void) {
     nvs_flash_init();
     wifi_init();
     http_server_init();
     
-    gpio_set_direction(RELAY_PIN, GPIO_MODE_OUTPUT);
-    gpio_set_level(RELAY_PIN, 1); // Inicializar el relé en estado de "normalmente abierto" (NO)
+    gpio_set_direction(RELAY_PIN1, GPIO_MODE_OUTPUT);  // Configura el relé 1
+    gpio_set_direction(RELAY_PIN2, GPIO_MODE_OUTPUT);  // Configura el relé 2
+    gpio_set_level(RELAY_PIN1, 1); // Inicializar el relé 1 en estado de "normalmente abierto" (NO)
+    gpio_set_level(RELAY_PIN2, 1); // Inicializar el relé 2 en estado de "normalmente abierto" (NO)
+
+    gpio_set_direction(SENSOR_PIN_FC28, GPIO_MODE_INPUT);  // Configura el pin para el sensor FC-28
 }
 
 void wifi_init(void) {
@@ -54,12 +68,49 @@ void http_server_init(void) {
     start_http_server();
 }
 
-void relay_control(int state) {
-    gpio_set_level(RELAY_PIN, state);
+void relay_control(int relay_num, int state) {
+    if (relay_num == 1) {
+        gpio_set_level(RELAY_PIN1, state);
+    } else if (relay_num == 2) {
+        gpio_set_level(RELAY_PIN2, state);
+    }
 }
 
-int read_humidity_sensor(void) {
-    return gpio_get_level(SENSOR_PIN);
+// Función para leer la temperatura desde el DHT11
+float read_temperature(void) {
+    int16_t temperature = 0;
+    int16_t humidity = 0;
+    if (dht_read_data(DHT_TYPE, DHT_PIN, &humidity, &temperature) == ESP_OK) {
+        ESP_LOGI(TAG, "Temperatura: %d C, Humedad: %d %%", temperature, humidity);
+        return (float)temperature;
+    } else {
+        ESP_LOGE(TAG, "Error al leer el sensor DHT11");
+        return -1; // Indicar error
+    }
+}
+
+// Función para leer la humedad desde el DHT11
+float read_humidity(void) {
+    int16_t temperature = 0;
+    int16_t humidity = 0;
+    if (dht_read_data(DHT_TYPE, DHT_PIN, &humidity, &temperature) == ESP_OK) {
+        ESP_LOGI(TAG, "Temperatura: %d C, Humedad: %d %%", temperature, humidity);
+        return (float)humidity;
+    } else {
+        ESP_LOGE(TAG, "Error al leer el sensor DHT11");
+        return -1; // Indicar error
+    }
+}
+
+// Función para leer la humedad del suelo con el FC-28
+int read_soil_humidity(void) {
+    int soil_value = gpio_get_level(SENSOR_PIN_FC28);  // Leer el valor digital (0 o 1) del FC-28
+    if (soil_value == -1) {
+        ESP_LOGE(TAG, "Error al leer el sensor de humedad del suelo FC-28");
+        return -1;  // Error de lectura
+    }
+    ESP_LOGI(TAG, "Valor de humedad del suelo: %d", soil_value);
+    return soil_value;  // 0 es húmedo, 1 es seco
 }
 
 // Aquí se agregaría la implementación del servidor HTTP
@@ -83,17 +134,31 @@ void start_http_server(void) {
         .user_ctx = NULL
     };
 
-    httpd_uri_t on_uri = {
-        .uri = "/on",
+    httpd_uri_t on_uri_1 = {
+        .uri = "/on1",
         .method = HTTP_GET,
-        .handler = handle_on,
+        .handler = handle_on_1,
         .user_ctx = NULL
     };
 
-    httpd_uri_t off_uri = {
-        .uri = "/off",
+    httpd_uri_t off_uri_1 = {
+        .uri = "/off1",
         .method = HTTP_GET,
-        .handler = handle_off,
+        .handler = handle_off_1,
+        .user_ctx = NULL
+    };
+
+    httpd_uri_t on_uri_2 = {
+        .uri = "/on2",
+        .method = HTTP_GET,
+        .handler = handle_on_2,
+        .user_ctx = NULL
+    };
+
+    httpd_uri_t off_uri_2 = {
+        .uri = "/off2",
+        .method = HTTP_GET,
+        .handler = handle_off_2,
         .user_ctx = NULL
     };
 
@@ -104,46 +169,107 @@ void start_http_server(void) {
         .user_ctx = NULL
     };
 
+    httpd_uri_t temperatura_uri = {
+        .uri = "/temperatura",
+        .method = HTTP_GET,
+        .handler = handle_temperatura,
+        .user_ctx = NULL
+    };
+
+    httpd_uri_t humedad_suelo_uri = {
+        .uri = "/humedad_suelo",
+        .method = HTTP_GET,
+        .handler = handle_humedad_suelo,
+        .user_ctx = NULL
+    };
+
     // Iniciar el servidor
     if (httpd_start(&server, &config) == ESP_OK) {
         httpd_register_uri_handler(server, &root_uri);
-        httpd_register_uri_handler(server, &on_uri);
-        httpd_register_uri_handler(server, &off_uri);
+        httpd_register_uri_handler(server, &on_uri_1);
+        httpd_register_uri_handler(server, &off_uri_1);
+        httpd_register_uri_handler(server, &on_uri_2);
+        httpd_register_uri_handler(server, &off_uri_2);
         httpd_register_uri_handler(server, &humedad_uri);
+        httpd_register_uri_handler(server, &temperatura_uri);
+        httpd_register_uri_handler(server, &humedad_suelo_uri);
     }
 }
 
 esp_err_t handle_root(httpd_req_t *req) {
-    const char *html = "<html><body><h1>Control de Motor</h1>"
-                       "<button onclick=\"location.href='/on'\">ON</button>"
-                       "<button onclick=\"location.href='/off'\">OFF</button>"
-                       "<h2>Humedad del Suelo: <span id='humedad'>Cargando...</span></h2>"
-                       "<script>setInterval(function(){fetch('/humedad').then(response => response.text()).then(data => document.getElementById('humedad').innerText = data);}, 2000);</script>"
+    const char *html = "<html><body><h1>Control de Motores</h1>"
+                       "<button onclick=\"location.href='/on1'\">ON Relé 1</button>"
+                       "<button onclick=\"location.href='/off1'\">OFF Relé 1</button>"
+                       "<br><br>"
+                       "<button onclick=\"location.href='/on2'\">ON Relé 2</button>"
+                       "<button onclick=\"location.href='/off2'\">OFF Relé 2</button>"
+                       "<h2>Temperatura: <span id='temperatura'>Cargando...</span></h2>"
+                       "<h2>Humedad: <span id='humedad'>Cargando...</span></h2>"
+                       "<h2>Humedad del Suelo: <span id='humedad_suelo'>Cargando...</span></h2>"
+                       "<script>setInterval(function(){fetch('/temperatura').then(response => response.text()).then(data => document.getElementById('temperatura').innerText = data);}, 2000);"
+                       "setInterval(function(){fetch('/humedad').then(response => response.text()).then(data => document.getElementById('humedad').innerText = data);}, 2000);"
+                       "setInterval(function(){fetch('/humedad_suelo').then(response => response.text()).then(data => document.getElementById('humedad_suelo').innerText = data);}, 2000);</script>"
                        "</body></html>";
     
     httpd_resp_send(req, html, strlen(html));
     return ESP_OK;
 }
 
-esp_err_t handle_on(httpd_req_t *req) {
-    relay_control(0); // Encender el relé
-    httpd_resp_send(req, "Motor encendido", HTTPD_RESP_USE_STRLEN);
+esp_err_t handle_on_1(httpd_req_t *req) {
+    relay_control(1, 0); // Encender el relé 1
+    httpd_resp_send(req, "Relé 1 encendido", HTTPD_RESP_USE_STRLEN);
     return ESP_OK;
 }
 
-esp_err_t handle_off(httpd_req_t *req) {
-    relay_control(1); // Apagar el relé
-    httpd_resp_send(req, "Motor apagado", HTTPD_RESP_USE_STRLEN);
+esp_err_t handle_off_1(httpd_req_t *req) {
+    relay_control(1, 1); // Apagar el relé 1
+    httpd_resp_send(req, "Relé 1 apagado", HTTPD_RESP_USE_STRLEN);
+    return ESP_OK;
+}
+
+esp_err_t handle_on_2(httpd_req_t *req) {
+    relay_control(2, 0); // Encender el relé 2
+    httpd_resp_send(req, "Relé 2 encendido", HTTPD_RESP_USE_STRLEN);
+    return ESP_OK;
+}
+
+esp_err_t handle_off_2(httpd_req_t *req) {
+    relay_control(2, 1); // Apagar el relé 2
+    httpd_resp_send(req, "Relé 2 apagado", HTTPD_RESP_USE_STRLEN);
     return ESP_OK;
 }
 
 esp_err_t handle_humedad(httpd_req_t *req) {
-    int humedadValor = read_humidity_sensor(); // Leer el estado del sensor
-    ESP_LOGI(TAG, "Valor de humedad: %d", humedadValor);
-    
-    // Interpretar el valor digital: 0 es húmedo, 1 es seco
-    const char *humedadEstado = (humedadValor == 1) ? "Seco" : "Húmedo";
-    httpd_resp_send(req, humedadEstado, HTTPD_RESP_USE_STRLEN);
+    float humedad = read_humidity(); // Leer la humedad desde el DHT11
+    if (humedad == -1) {
+        httpd_resp_send(req, "Error leyendo humedad", HTTPD_RESP_USE_STRLEN);
+    } else {
+        char buffer[50];
+        snprintf(buffer, sizeof(buffer), "%.2f %%", humedad);
+        httpd_resp_send(req, buffer, HTTPD_RESP_USE_STRLEN);
+    }
     return ESP_OK;
 }
 
+esp_err_t handle_temperatura(httpd_req_t *req) {
+    float temperatura = read_temperature(); // Leer la temperatura desde el DHT11
+    if (temperatura == -1) {
+        httpd_resp_send(req, "Error leyendo temperatura", HTTPD_RESP_USE_STRLEN);
+    } else {
+        char buffer[50];
+        snprintf(buffer, sizeof(buffer), "%.2f C", temperatura);
+        httpd_resp_send(req, buffer, HTTPD_RESP_USE_STRLEN);
+    }
+    return ESP_OK;
+}
+
+esp_err_t handle_humedad_suelo(httpd_req_t *req) {
+    int humedad_suelo = read_soil_humidity(); // Leer la humedad del suelo desde el FC-28
+    if (humedad_suelo == -1) {
+        httpd_resp_send(req, "Error leyendo humedad del suelo", HTTPD_RESP_USE_STRLEN);
+    } else {
+        const char *estado = humedad_suelo == 0 ? "Húmedo" : "Seco";
+        httpd_resp_send(req, estado, HTTPD_RESP_USE_STRLEN);
+    }
+    return ESP_OK;
+}
