@@ -17,8 +17,8 @@ const char *password = "noha12345";
 
 #define RELAY_PIN1 GPIO_NUM_2   // Relé 1 en el pin D2
 #define RELAY_PIN2 GPIO_NUM_0   // Relé 2 en el pin D3 (cambia si es necesario)
-#define SENSOR_PIN_DHT GPIO_NUM_4  // Pin para el sensor DHT11
-#define SENSOR_PIN_FC28 GPIO_NUM_5 // Pin para el sensor FC-28
+#define SENSOR_PIN_DHT GPIO_NUM_11  // Pin para el sensor DHT11
+#define SENSOR_PIN_FC28 GPIO_NUM_14 // Pin para el sensor FC-28
 
 // Definir el tipo de sensor y el pin
 #define DHT_TYPE DHT_TYPE_AM2302  // DHT11
