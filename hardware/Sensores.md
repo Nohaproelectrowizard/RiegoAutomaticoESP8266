@@ -14,7 +14,7 @@ Sensor de Temperatura y Humedad relativa del ambiente
 
 ### Fotocelula
 
-Tambien voy a utilizar una plaqueta de una fotocelula con relee que pueda tener como salida una fuente de luz de tension nominal de 220v
+Tambien voy a utilizar una plaqueta de una fotocelula para prender o apagar mi placa de desarrollo asi funciona durante un ciclo del dia y ahorra energia
 
 ![image](https://github.com/user-attachments/assets/0f2056be-aa21-43f6-a625-59dc216d14d3)
 ![image](https://github.com/user-attachments/assets/6e5d0d94-e86f-4872-82d6-81d71409820d)
