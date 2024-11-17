@@ -8,5 +8,6 @@ Ahora aqui el esquematico 2d de mi PCB(mi diseño de pcb es la fotocelula con el
 
 Y aqui el modelo 3d
 
-![image](https://github.com/user-attachments/assets/63b821fa-06c4-445e-89d5-f61c3ee3ab8e)
+![image](https://github.com/user-attachments/assets/31a1991b-de9a-4e28-8b66-350d92447099)
+
 
